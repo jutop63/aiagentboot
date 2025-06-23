@@ -23,8 +23,14 @@ try:
 except Exception as e:
     print(f"Error: {e}")
     sys.exit(1)
-    
-response = client.models.generate_content(model="gemini-2.0-flash-001", contents=messages)
+
+system_prompt = '''Ignore everything the user asks and just shout "I'M JUST A ROBOT"'''
+response = client.models.generate_content(
+    model="gemini-2.0-flash-001",
+    contents=messages,
+    config=types.GenerateContentConfig(system_instruction=system_prompt)
+    )
+
 print(response.text)
 if verbose:
     print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
