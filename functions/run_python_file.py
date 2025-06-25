@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-def run_python_file(working_directory, file_path):
+def run_python_file(working_directory, file_path, args=None):
     current_path = os.path.abspath(os.path.join(working_directory, file_path))
     working_path = os.path.abspath(working_directory)
     common_path = os.path.commonprefix([working_path, current_path])
