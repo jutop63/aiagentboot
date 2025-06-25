@@ -51,7 +51,7 @@ schema_run_python_file = types.FunctionDeclaration(
             ),
             "args": types.Schema(
                 type=types.Type.STRING,
-                description="optional arguments for the python file"
+                description="optional arguments for the python file. If no arguments are provided, run the file without any arguments"
             )
         },
     ),
@@ -64,11 +64,11 @@ schema_write_file = types.FunctionDeclaration(
         properties={
             "file_path": types.Schema(
                 type=types.Type.STRING,
-                description="The path pointing to the .py file that is being run.",
+                description="The path pointing to the file that is going to be created and/or overwritten.",
             ),
-            "text": types.Schema(
+            "content": types.Schema(
                 type=types.Type.STRING,
-                description="Provided text that is written into give file"
+                description="String that is written into give file_path"
             )
         },
     ),
@@ -97,7 +97,7 @@ def call_function(function_call_part, verbose=False):
 
     function_name = function_call_part.name
     function_dict = function_call_part.args.copy()
-    function_dict["working_directory"] = "./Calculator"
+    function_dict["working_directory"] = "./calculator"
 
     if function_name not in callable_functions:
         return types.Content(
