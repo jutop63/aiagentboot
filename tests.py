@@ -41,6 +41,6 @@ def run_tests(test_case):
         print(f"Error: {e}")
     print("==============Test Complete=============")
 
-test_case = test_cases_run_python
+test_case = test_cases_write_file
 run_tests(test_case)
 

@@ -3,7 +3,10 @@ import sys
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from functions.get_files_info import *
+from functions.get_file_content import get_file_content
+from functions.get_files_info import get_files_info
+from functions.run_python_file import run_python_file
+from functions.write_file import write_file
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -79,6 +82,48 @@ available_functions = types.Tool(
     ]
 )
 
+def call_function(function_call_part, verbose=False):
+    if verbose:
+        print(f"Calling Function: {function_call_part.name}({function_call_part.args})")
+    else:
+        print(f" - Calling function: {function_call_part.name}")
+
+    callable_functions = {
+        "get_files_info": get_files_info,
+        "get_file_content": get_file_content,
+        "run_python_file": run_python_file,
+        "write_file": write_file
+        }
+
+    function_name = function_call_part.name
+    function_dict = function_call_part.args.copy()
+    function_dict["working_directory"] = "./Calculator"
+
+    if function_name not in callable_functions:
+        return types.Content(
+            role="tool",
+            parts=[
+                types.Part.from_function_response(
+                    name=function_name,
+                    response={"error": f"Unknown function: {function_name}"},
+                    )
+                ],
+            )
+    
+    function_result = callable_functions[function_name](**function_dict)
+    return types.Content(
+    role="tool",
+    parts=[
+        types.Part.from_function_response(
+            name=function_name,
+            response={"result": function_result},
+            )   
+        ],
+    )
+
+    
+
+
 try:
     user_prompt = sys.argv[1]
     if len(sys.argv) == 2:
@@ -112,11 +157,24 @@ response = client.models.generate_content(
     config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt)
     )
 
-if response.function_calls:
-    for function_call_part in response.function_calls:
-        print(f"Calling function: {function_call_part.name}({function_call_part.args})")
-else:
-    print(response.text)
+try:
+    if response.function_calls:
+        for function_call_part in response.function_calls:
+            function_call_result = call_function(function_call_part, verbose)
+            if not hasattr(function_call_result.parts[0], "function_response"):
+                raise Exception("fatal error when running function")
+            if not hasattr(function_call_result.parts[0].function_response, "response"):
+                raise Exception("fatal error when running function")
+            
+            if verbose:
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+    else:
+        print(response.text)
+
+except Exception as e:
+    print(f"Error: {e}")
+    sys.exit(1)
+
 if verbose:
     print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
     print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
