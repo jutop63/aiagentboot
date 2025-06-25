@@ -21,7 +21,7 @@ schema_get_files_info = types.FunctionDeclaration(
         properties={
             "directory": types.Schema(
                 type=types.Type.STRING,
-                description="The directory to list files from, relative to the working directory. If not provided, lists files in the working directory itself.",
+                description="The directory to list files from, relative to the working directory. If not provided, use the working directory itself.",
             ),
         },
     ),
@@ -150,34 +150,48 @@ When a user asks a question or makes a request, make a function call plan. You c
 
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
+max_iterations = 20
+current_iteration = 0
+while current_iteration < max_iterations:
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=messages,
+        config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt)
+        )
 
-response = client.models.generate_content(
-    model="gemini-2.0-flash-001",
-    contents=messages,
-    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt)
-    )
+    try:
+        if response.candidates:
+            for candidate in response.candidates:
+                messages.append(candidate.content)
 
-try:
-    if response.function_calls:
-        for function_call_part in response.function_calls:
-            function_call_result = call_function(function_call_part, verbose)
-            if not hasattr(function_call_result.parts[0], "function_response"):
-                raise Exception("fatal error when running function")
-            if not hasattr(function_call_result.parts[0].function_response, "response"):
-                raise Exception("fatal error when running function")
-            
-            if verbose:
-                print(f"-> {function_call_result.parts[0].function_response.response}")
-    else:
-        print(response.text)
+        if response.function_calls:
+            for function_call_part in response.function_calls:
 
-except Exception as e:
-    print(f"Error: {e}")
-    sys.exit(1)
+                function_call_result = call_function(function_call_part, verbose)
+
+                if not hasattr(function_call_result.parts[0], "function_response"):
+                    raise Exception("fatal error when running function")
+                if not hasattr(function_call_result.parts[0].function_response, "response"):
+                    raise Exception("fatal error when running function")
+                if verbose:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+
+                messages.append(function_call_result)
+
+        else:
+            print(response.text)
+            break
+
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    current_iteration += 1
 
 if verbose:
     print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
     print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
 
+    
 
 

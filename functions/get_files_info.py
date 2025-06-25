@@ -1,6 +1,9 @@
 import os
 
 def get_files_info(working_directory, directory=None):
+    if directory == None:
+        directory = "."
+    
     current_path = os.path.abspath(os.path.join(working_directory, directory))
     working_path = os.path.abspath(working_directory)
     common_path = os.path.commonprefix([working_path, current_path])
